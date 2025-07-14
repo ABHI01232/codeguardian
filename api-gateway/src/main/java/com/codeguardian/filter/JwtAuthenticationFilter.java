@@ -26,7 +26,9 @@ public class JwtAuthenticationFilter implements WebFilter {
         String path = exchange.getRequest().getURI().getPath();
 
         // Skip authentication for public endpoints
-        if (path.startsWith("/api/auth/") || path.startsWith("/actuator/")) {
+        if (path.startsWith("/api/auth/") ||
+            path.startsWith("/actuator/") ||
+            path.startsWith("/api/git/webhooks/")) {
             return chain.filter(exchange);
         }
 

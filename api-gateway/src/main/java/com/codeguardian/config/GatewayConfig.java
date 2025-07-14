@@ -24,13 +24,17 @@ public class GatewayConfig {
                         .path("/api/analyze/**")
                         .filters(f -> f.stripPrefix(2))
                         .uri("http://code-analyzer:8082"))
+                .route("auth", r -> r
+                        .path("/api/auth/**")
+                        .filters(f -> f.stripPrefix(2))
+                        .uri("http://auth-service:8083"))
                 .build();
     }
 
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        corsConfig.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080"));
         corsConfig.setMaxAge(3600L);
         corsConfig.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         corsConfig.setAllowedHeaders(Arrays.asList("*"));

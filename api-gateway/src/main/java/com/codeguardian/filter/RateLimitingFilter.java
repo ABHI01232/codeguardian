@@ -25,7 +25,7 @@ public class RateLimitingFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String clientIp = exchange.getRequest().getRemoteAddress().getAddress().getHostAddress();
+        String clientIp = getClientIp(exchange);
         String key = "rate_limit:" + clientIp;
 
         return redisTemplate.opsForValue()
@@ -43,7 +43,28 @@ public class RateLimitingFilter implements GlobalFilter, Ordered {
                         return exchange.getResponse().setComplete();
                     }
                     return chain.filter(exchange);
+                })
+                .onErrorResume(error -> {
+                    // If Redis is unavailable, allow the request
+                    return chain.filter(exchange);
                 });
+    }
+
+    private String getClientIp(ServerWebExchange exchange) {
+        String xRealIp = exchange.getRequest().getHeaders().getFirst("X-Real-IP");
+        String xForwardedFor = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+
+        return exchange.getRequest().getRemoteAddress() != null
+            ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress()
+            : "unknown";
     }
 
     @Override
