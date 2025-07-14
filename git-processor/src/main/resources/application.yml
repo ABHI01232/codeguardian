@@ -4,28 +4,79 @@ server:
 spring:
   application:
     name: git-processor
+
+  # Database Configuration
   datasource:
-    url: jdbc:postgresql://postgres:5432/codeguardian
+    url: jdbc:postgresql://localhost:5432/codeguardian
     username: ${DB_USERNAME:codeguardian}
     password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+
+  # Kafka Configuration
   kafka:
-    bootstrap-servers: kafka:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 1
+    consumer:
+      group-id: git-processor-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
 
+# Webhook Configuration
 webhook:
   github:
     secret: ${GITHUB_WEBHOOK_SECRET:your-github-webhook-secret}
   gitlab:
     token: ${GITLAB_WEBHOOK_TOKEN:your-gitlab-webhook-token}
 
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
 logging:
   level:
     com.codeguardian: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Custom Application Properties
+app:
+  kafka:
+    topics:
+      commit-analysis: commit-analysis
+      pull-request-analysis: pull-request-analysis
+      merge-request-analysis: merge-request-analysis
+  git:
+    clone-base-path: ${GIT_CLONE_PATH:/tmp/codeguardian/repos}
