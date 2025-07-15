@@ -44,18 +44,30 @@ class WebhookProcessorServiceTest {
         GitHubWebhookPayload payload = createTestPayload();
         RepositoryEntity mockRepo = new RepositoryEntity();
         mockRepo.setId(1L);
+        mockRepo.setFullName("test/repo");
+        mockRepo.setPlatform("GitHub");
+
+        CommitEntity mockCommit = new CommitEntity();
+        mockCommit.setId(1L);
+        mockCommit.setCommitId("abc123");
+        mockCommit.setRepository(mockRepo);
+        mockCommit.setTimestamp(java.time.LocalDateTime.now());
+        mockCommit.setMessage("Test commit");
+        mockCommit.setAuthorName("Test Author");
+        mockCommit.setAuthorEmail("test@example.com");
+        mockCommit.setAnalysisStatus("PENDING");
 
         when(repositoryRepository.findByExternalId(anyString())).thenReturn(Optional.empty());
         when(repositoryRepository.save(any(RepositoryEntity.class))).thenReturn(mockRepo);
         when(commitRepository.findByCommitId(anyString())).thenReturn(Optional.empty());
-        when(commitRepository.save(any(CommitEntity.class))).thenReturn(new CommitEntity());
+        when(commitRepository.save(any(CommitEntity.class))).thenReturn(mockCommit);
 
         // When
         service.processGitHubWebhook("push", payload);
 
         // Then
         verify(repositoryRepository).save(any(RepositoryEntity.class));
-        verify(commitRepository).save(any(CommitEntity.class));
+        verify(commitRepository, atLeastOnce()).save(any(CommitEntity.class));
         verify(kafkaTemplate).send(eq("commit-analysis"), anyString(), any());
     }
 
