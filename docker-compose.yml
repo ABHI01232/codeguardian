@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  # Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: codeguardian-postgres
+    environment:
+      POSTGRES_DB: codeguardian
+      POSTGRES_USER: codeguardian
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - codeguardian-network
+
+  # Redis for API Gateway
+  redis:
+    image: redis:7-alpine
+    container_name: codeguardian-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - codeguardian-network
+
+  # Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: codeguardian-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - codeguardian-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: codeguardian-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - codeguardian-network
+
+  # API Gateway
+  api-gateway:
+    build: ./api-gateway
+    container_name: codeguardian-api-gateway
+    depends_on:
+      - redis
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JWT_SECRET: your-256-bit-secret-key-for-jwt-token-generation-keep-it-secure-and-change-this-in-production
+    networks:
+      - codeguardian-network
+
+  # Git Processor
+  git-processor:
+    build: ./git-processor
+    container_name: codeguardian-git-processor
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_USERNAME: codeguardian
+      DB_PASSWORD: password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      GITHUB_WEBHOOK_SECRET: your-github-webhook-secret
+      GITLAB_WEBHOOK_TOKEN: your-gitlab-webhook-token
+    volumes:
+      - git_repos:/tmp/codeguardian/repos
+    networks:
+      - codeguardian-network
+
+  # Code Analyzer
+  code-analyzer:
+    build: ./code-analyzer
+    container_name: codeguardian-code-analyzer
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_USERNAME: codeguardian
+      DB_PASSWORD: password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - codeguardian-network
+
+volumes:
+  postgres_data:
+  git_repos:
+
+networks:
+  codeguardian-network:
+    driver: bridge
