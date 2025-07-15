@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Database
   postgres:
@@ -101,6 +99,19 @@ services:
       DB_USERNAME: codeguardian
       DB_PASSWORD: password
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - codeguardian-network
+
+  # Frontend Dashboard
+  frontend:
+    build: ./frontend
+    container_name: codeguardian-frontend
+    depends_on:
+      - api-gateway
+      - git-processor
+      - code-analyzer
+    ports:
+      - "3000:80"
     networks:
       - codeguardian-network
 
