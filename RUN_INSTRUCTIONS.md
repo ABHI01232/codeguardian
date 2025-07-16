@@ -100,6 +100,20 @@ docker logs codeguardian-code-analyzer
 docker-compose -f docker-compose.final.yml build --no-cache
 ```
 
+### If frontend shows old version after code changes:
+```bash
+# Stop frontend container
+docker-compose -f docker-compose.final.yml stop frontend
+
+# Rebuild frontend with new code (no cache)
+docker-compose -f docker-compose.final.yml build --no-cache frontend
+
+# Start frontend container
+docker-compose -f docker-compose.final.yml up -d frontend
+```
+
+> **Note**: Frontend changes require container rebuild since the React app is built into the Docker image during build time.
+
 ### If ports are already in use:
 ```bash
 # Check what's using the ports
@@ -130,10 +144,12 @@ lsof -i :8082  # Code Analyzer
 ## Demo Features
 
 1. **Dashboard**: Security metrics, vulnerability tracking
-2. **Repository Management**: Add/monitor repositories
-3. **Real-time Analysis**: Simulated security scanning
+2. **Repository Management**: Add/monitor repositories via modal
+3. **Real-time Analysis**: Simulated security scanning with detailed results
 4. **Webhook Integration**: GitHub/GitLab webhook processing
 5. **Health Monitoring**: Service status indicators
+6. **Navigation**: Full React Router implementation with detailed views
+7. **Analysis Details**: Comprehensive vulnerability reports with filtering
 
 ## System Architecture
 
@@ -163,9 +179,11 @@ lsof -i :8082  # Code Analyzer
 
 1. **Test the dashboard**: Visit http://localhost:3000
 2. **Check service health**: Verify all APIs are responding
-3. **Add repositories**: Use the frontend to monitor code
-4. **Set up webhooks**: Configure GitHub/GitLab integrations
-5. **Monitor analysis**: Watch real-time security scanning
+3. **Add repositories**: Use the "Add Repository" button in the header
+4. **Navigate pages**: Click "View Details" buttons to explore repository and analysis pages
+5. **Test filtering**: Use search and filter features on analysis results
+6. **Set up webhooks**: Configure GitHub/GitLab integrations
+7. **Monitor analysis**: Watch real-time security scanning
 
 ---
 

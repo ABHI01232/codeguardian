@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   GitBranch, 
   ExternalLink, 
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 
 const RepoList = ({ repositories = [] }) => {
+  const navigate = useNavigate();
   
   const getPlatformColor = (platform) => {
     switch (platform?.toLowerCase()) {
@@ -202,8 +204,11 @@ const RepoList = ({ repositories = [] }) => {
                 <button className="text-xs text-primary-600 hover:text-primary-700 px-2 py-1 rounded border border-primary-200 hover:bg-primary-50">
                   Analyze Now
                 </button>
-                <button className="text-xs text-gray-600 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50">
-                  View History
+                <button 
+                  onClick={() => navigate(`/repository/${repo.id}`)}
+                  className="text-xs text-gray-600 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
+                >
+                  View Details
                 </button>
               </div>
             </div>

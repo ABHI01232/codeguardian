@@ -7,13 +7,15 @@ import {
   Activity,
   Clock,
   Users,
-  FileText
+  FileText,
+  Plus
 } from 'lucide-react';
 import { dashboardAPI } from '../services/api';
 import AnalysisResults from './AnalysisResults';
 import RepoList from './RepoList';
 import RealTimeUpdates from './RealTimeUpdates';
 import SystemHealth from './SystemHealth';
+import AddRepositoryModal from './AddRepositoryModal';
 
 const Dashboard = () => {
   const [overview, setOverview] = useState({
@@ -28,6 +30,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [showAddRepoModal, setShowAddRepoModal] = useState(false);
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
@@ -82,6 +85,36 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddRepository = async (repoData) => {
+    try {
+      // For now, just add to local state as demo
+      const newRepo = {
+        id: Date.now(),
+        ...repoData,
+        commitCount: 0,
+        branchCount: 1,
+        analysisCount: 0,
+        issueCount: 0,
+        lastCommitDate: new Date().toISOString(),
+        securityStatus: 'PENDING'
+      };
+      
+      setOverview(prev => ({
+        ...prev,
+        repositories: {
+          content: [newRepo, ...prev.repositories.content],
+          totalElements: prev.repositories.totalElements + 1
+        }
+      }));
+      
+      // TODO: Add actual API call here
+      console.log('Adding repository:', repoData);
+    } catch (error) {
+      console.error('Failed to add repository:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     
@@ -127,13 +160,22 @@ const Dashboard = () => {
                 <p className="text-sm text-gray-500">Last Updated</p>
                 <p className="text-sm font-medium">{lastUpdated.toLocaleTimeString()}</p>
               </div>
-              <button 
-                onClick={fetchDashboardData}
-                className="btn-primary"
-                disabled={loading}
-              >
-                {loading ? <Activity className="w-4 h-4 animate-spin" /> : 'Refresh'}
-              </button>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => setShowAddRepoModal(true)}
+                  className="btn-primary flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Repository</span>
+                </button>
+                <button 
+                  onClick={fetchDashboardData}
+                  className="btn-secondary"
+                  disabled={loading}
+                >
+                  {loading ? <Activity className="w-4 h-4 animate-spin" /> : 'Refresh'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -236,20 +278,27 @@ const Dashboard = () => {
 
           {/* Right Column */}
           <div className="space-y-8">
-            {/* System Health */}
-            <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6">System Health</h2>
-              <SystemHealth health={overview.systemHealth} />
-            </div>
-
             {/* Real-time Updates */}
             <div className="card">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">Real-time Updates</h2>
               <RealTimeUpdates />
             </div>
+
+            {/* System Health */}
+            <div className="card">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">System Health</h2>
+              <SystemHealth health={overview.systemHealth} />
+            </div>
           </div>
         </div>
       </main>
+
+      {/* Add Repository Modal */}
+      <AddRepositoryModal 
+        isOpen={showAddRepoModal}
+        onClose={() => setShowAddRepoModal(false)}
+        onSubmit={handleAddRepository}
+      />
     </div>
   );
 };

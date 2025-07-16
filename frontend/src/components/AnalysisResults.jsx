@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   AlertTriangle, 
   Shield, 
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 
 const AnalysisResults = ({ analyses = [] }) => {
+  const navigate = useNavigate();
   
   const getSeverityColor = (severity) => {
     switch (severity?.toLowerCase()) {
@@ -190,7 +192,10 @@ const AnalysisResults = ({ analyses = [] }) => {
               <Shield className="w-4 h-4" />
               <span>Analysis ID: {analysis.id || 'N/A'}</span>
             </div>
-            <button className="text-sm text-primary-600 hover:text-primary-700 flex items-center space-x-1">
+            <button 
+              onClick={() => navigate(`/analysis/${analysis.id}`)}
+              className="text-sm text-primary-600 hover:text-primary-700 flex items-center space-x-1"
+            >
               <span>View Details</span>
               <ExternalLink className="w-4 h-4" />
             </button>

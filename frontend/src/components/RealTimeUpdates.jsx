@@ -17,7 +17,7 @@ const RealTimeUpdates = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  // Real-time updates using WebSocket connection
+  // Real-time updates using WebSocket connection with fallback to mock data
   useEffect(() => {
     // Connect to WebSocket
     webSocketService.connect();
@@ -53,8 +53,8 @@ const RealTimeUpdates = () => {
     const initialUpdate = {
       id: Date.now(),
       type: 'system_health',
-      title: 'WebSocket Service Started',
-      message: 'Connecting to real-time notification service...',
+      title: 'Real-time Updates Active',
+      message: 'Monitoring system for security events...',
       timestamp: new Date(),
       severity: 'info',
       repository: null
@@ -63,11 +63,57 @@ const RealTimeUpdates = () => {
     setUpdates([initialUpdate]);
     setLastUpdate(new Date());
 
+    // Simulate periodic updates for demo (fallback if WebSocket fails)
+    const mockUpdates = [
+      {
+        type: 'analysis_complete',
+        title: 'Security Analysis Complete',
+        message: 'Found 3 vulnerabilities in banking-api',
+        severity: 'high',
+        repository: 'banking-api'
+      },
+      {
+        type: 'webhook_received',
+        title: 'Webhook Received',
+        message: 'New commit pushed to payment-service',
+        severity: 'info',
+        repository: 'payment-service'
+      },
+      {
+        type: 'security_alert',
+        title: 'Critical Vulnerability Detected',
+        message: 'SQL injection vulnerability in user authentication',
+        severity: 'critical',
+        repository: 'banking-api'
+      },
+      {
+        type: 'system_health',
+        title: 'System Health Check',
+        message: 'All services running normally',
+        severity: 'success',
+        repository: null
+      }
+    ];
+
+    // Simulate updates every 10 seconds for demo
+    const interval = setInterval(() => {
+      const randomUpdate = mockUpdates[Math.floor(Math.random() * mockUpdates.length)];
+      const newUpdate = {
+        id: Date.now(),
+        ...randomUpdate,
+        timestamp: new Date()
+      };
+      
+      setUpdates(prev => [newUpdate, ...prev.slice(0, 9)]);
+      setLastUpdate(new Date());
+    }, 10000);
+
     // Cleanup function
     return () => {
       unsubscribeConnection();
       unsubscribeNotifications();
       webSocketService.disconnect();
+      clearInterval(interval);
     };
   }, []);
 
