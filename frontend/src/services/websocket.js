@@ -1,74 +1,82 @@
-import { io } from 'socket.io-client';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import React from 'react';
 
 class WebSocketService {
   constructor() {
-    this.socket = null;
+    this.client = null;
     this.listeners = new Map();
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000;
+    this.subscriptions = new Map();
   }
 
-  connect(url = 'ws://localhost:8080') {
+  connect(url = 'http://localhost:8080/ws') {
     try {
-      this.socket = io(url, {
-        transports: ['websocket'],
-        autoConnect: true,
-        reconnection: true,
-        reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: this.reconnectDelay,
+      this.client = new Client({
+        webSocketFactory: () => new SockJS(url),
+        reconnectDelay: this.reconnectDelay,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+        
+        onConnect: () => {
+          console.log('✅ WebSocket connected');
+          this.reconnectAttempts = 0;
+          this.notifyListeners('connection', { status: 'connected' });
+          this.subscribeToNotifications();
+        },
+        
+        onDisconnect: () => {
+          console.log('❌ WebSocket disconnected');
+          this.notifyListeners('connection', { status: 'disconnected' });
+          this.subscriptions.clear();
+        },
+        
+        onStompError: (frame) => {
+          console.error('🔌 WebSocket STOMP error:', frame);
+          this.notifyListeners('connection', { status: 'error', error: frame.body });
+        },
+        
+        onWebSocketError: (error) => {
+          console.error('🔌 WebSocket error:', error);
+          this.notifyListeners('connection', { status: 'error', error: error.message });
+        }
       });
 
-      this.socket.on('connect', () => {
-        console.log('✅ WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.notifyListeners('connection', { status: 'connected' });
-      });
-
-      this.socket.on('disconnect', (reason) => {
-        console.log('❌ WebSocket disconnected:', reason);
-        this.notifyListeners('connection', { status: 'disconnected', reason });
-      });
-
-      this.socket.on('connect_error', (error) => {
-        console.error('🔌 WebSocket connection error:', error);
-        this.notifyListeners('connection', { status: 'error', error: error.message });
-      });
-
-      this.socket.on('reconnect', (attemptNumber) => {
-        console.log(`🔄 WebSocket reconnected after ${attemptNumber} attempts`);
-        this.notifyListeners('connection', { status: 'reconnected', attemptNumber });
-      });
-
-      // Listen for analysis updates
-      this.socket.on('analysis-update', (data) => {
-        console.log('📊 Analysis update received:', data);
-        this.notifyListeners('analysisUpdate', data);
-      });
-
-      // Listen for repository updates  
-      this.socket.on('repository-update', (data) => {
-        console.log('📁 Repository update received:', data);
-        this.notifyListeners('repositoryUpdate', data);
-      });
-
-      // Listen for system alerts
-      this.socket.on('system-alert', (data) => {
-        console.log('🚨 System alert received:', data);
-        this.notifyListeners('systemAlert', data);
-      });
+      this.client.activate();
 
     } catch (error) {
       console.error('Failed to initialize WebSocket:', error);
     }
   }
 
+  subscribeToNotifications() {
+    if (!this.client || !this.client.connected) {
+      console.warn('Cannot subscribe: WebSocket not connected');
+      return;
+    }
+
+    // Subscribe to notifications topic
+    const subscription = this.client.subscribe('/topic/notifications', (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        console.log('📱 Notification received:', data);
+        this.notifyListeners('notification', data);
+      } catch (error) {
+        console.error('Error parsing notification:', error);
+      }
+    });
+
+    this.subscriptions.set('/topic/notifications', subscription);
+  }
+
   disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
+    if (this.client) {
+      this.client.deactivate();
+      this.client = null;
       this.listeners.clear();
+      this.subscriptions.clear();
     }
   }
 
@@ -106,23 +114,26 @@ class WebSocketService {
   }
 
   // Send data to server
-  emit(event, data) {
-    if (this.socket && this.socket.connected) {
-      this.socket.emit(event, data);
+  emit(destination, data) {
+    if (this.client && this.client.connected) {
+      this.client.publish({
+        destination: destination,
+        body: JSON.stringify(data)
+      });
     } else {
-      console.warn('Cannot emit event: WebSocket not connected');
+      console.warn('Cannot send message: WebSocket not connected');
     }
   }
 
   // Check connection status
   isConnected() {
-    return this.socket && this.socket.connected;
+    return this.client && this.client.connected;
   }
 
   // Get connection status
   getStatus() {
-    if (!this.socket) return 'disconnected';
-    return this.socket.connected ? 'connected' : 'connecting';
+    if (!this.client) return 'disconnected';
+    return this.client.connected ? 'connected' : 'connecting';
   }
 }
 

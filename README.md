@@ -1,8 +1,8 @@
-# 🛡️ CodeGuardian - AI-Powered Security Analysis Platform
+# 🛡️ CodeGuardian - Real-Time Security Analysis Platform
 
-**Enterprise-grade security analysis platform for banking and financial applications**
+**Enterprise-grade real-time security analysis platform for banking and financial applications**
 
-CodeGuardian is a comprehensive, microservices-based security analysis platform that automatically scans Git repositories for security vulnerabilities, code quality issues, and compliance violations. Built specifically for banking and financial applications with strict security requirements.
+CodeGuardian is a comprehensive, microservices-based security analysis platform that automatically scans Git repositories for security vulnerabilities, code quality issues, and compliance violations in real-time. Built specifically for banking and financial applications with strict security requirements, featuring live dashboards, WebSocket notifications, and AI-powered analysis.
 
 ## 🏗️ Architecture Overview
 
@@ -14,8 +14,8 @@ CodeGuardian is a comprehensive, microservices-based security analysis platform 
           │                      │                      │
           ▼                      ▼                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    🌐 API Gateway (Port 8080)                   │
-│         JWT Auth • Rate Limiting • CORS • Routing              │
+│              🌐 API Gateway (Port 8080)                         │
+│    JWT Auth • Rate Limiting • CORS • Routing • WebSocket       │
 └─────────────────┬───────────────────────┬───────────────────────┘
                   │                       │
                   ▼                       ▼
@@ -25,33 +25,64 @@ CodeGuardian is a comprehensive, microservices-based security analysis platform 
     │  • Repository Management    │    │  • Quality Assessment      │
     │  • Git Operations           │    │  • Compliance Checking     │
     └─────────────────────────────┘    └─────────────────────────────┘
+                  │                                      │
+                  ▼                                      ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    📱 React Frontend (Port 3000)                │
+    │          Live Dashboard • Real-time Updates • WebSocket         │
+    └─────────────────────────────────────────────────────────────────┘
 ```
+
+## ✨ Key Features
+
+### 🔴 Real-Time Analysis
+- **Live Vulnerability Detection**: Instant security analysis on code commits
+- **WebSocket Notifications**: Real-time alerts to connected dashboards
+- **Stream Processing**: Kafka-based event streaming for scalability
+
+### 📊 Interactive Dashboard
+- **React Frontend**: Modern, responsive web interface
+- **Live Updates**: Real-time display of analysis results
+- **Security Metrics**: Visual charts and trend analysis
+- **Repository Overview**: Comprehensive repository health monitoring
+
+### 🛡️ Advanced Security Detection
+- **Pattern-Based Analysis**: 6+ security vulnerability types
+- **CWE Mapping**: Common Weakness Enumeration classification
+- **Severity Scoring**: CRITICAL, HIGH, MEDIUM, LOW prioritization
+- **Detailed Remediation**: Specific fix recommendations
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Java 17+
-- Maven 3.6+
+- Java 21+
+- Maven 3.8+
 - Docker & Docker Compose
+- Node.js 18+ (for frontend development)
 - Git
 
-### Option 1: Docker Compose (Recommended - No PostgreSQL Installation Required)
+### Option 1: Docker Compose (Recommended - Complete Setup)
 ```bash
 # Clone repository
 git clone <repository-url>
 cd CodeGuardian
 
-# Start all services (includes PostgreSQL, Kafka, Redis)
-./scripts/start-all.sh
+# Start all services (includes PostgreSQL, Kafka, Redis, Frontend)
+docker-compose -f docker-compose.final.yml up -d
 
 # Verify services
 curl http://localhost:8080/actuator/health  # API Gateway
 curl http://localhost:8081/actuator/health  # Git Processor  
 curl http://localhost:8082/actuator/health  # Code Analyzer
 
-# Test the system
-cd git-processor && ./scripts/test-webhooks.sh
-cd code-analyzer && ./scripts/test-analysis.sh
+# Access the dashboard
+open http://localhost:3000  # React Frontend Dashboard
+
+# Test real-time analysis
+curl -X POST http://localhost:8080/api/git/webhook/github \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Event: push" \
+  -d '{"repository": {"name": "test-repo"}, "commits": [{"id": "abc123", "message": "Test commit"}]}'
 ```
 
 ### Option 2: Local Development (Manual Setup)
@@ -71,23 +102,26 @@ cd code-analyzer && ./scripts/start-dev.sh
 
 ## 🔄 System Flow
 
-### Background Process Flow
+### Real-Time Analysis Flow
 ```
 1. Code Push → GitHub/GitLab sends webhook
 2. API Gateway → Routes to Git Processor
-3. Git Processor → Validates, clones repo, extracts changes
+3. Git Processor → Validates, saves commit, extracts file changes
 4. Kafka Message → Sends analysis request to Code Analyzer
-5. Code Analyzer → Analyzes security, quality, compliance
-6. Results → Stores in database, sends notifications
+5. Code Analyzer → Performs real security analysis on code content
+6. Results → Stores in database, sends to WebSocket notifications
+7. Frontend → Receives real-time updates via WebSocket
 ```
 
 ### Detailed Flow Diagram
 ```
 GitHub/GitLab Push → API Gateway → Git Processor → Kafka → Code Analyzer
-                         ↓              ↓               ↓
-                     Redis Cache    PostgreSQL    Analysis Engine
-                         ↓              ↓               ↓
-                     JWT/Sessions   Repo/Commits   Security Reports
+                         ↓              ↓               ↓           ↓
+                     Redis Cache    PostgreSQL    Analysis Engine  Kafka
+                         ↓              ↓               ↓           ↓
+                     JWT/Sessions   Repo/Commits   Security Reports  WebSocket
+                                                                     ↓
+                                                             React Frontend
 ```
 
 ## 🛠️ Build & Test Commands
@@ -139,7 +173,7 @@ cd code-analyzer && ./scripts/run-tests.sh
 ```
 CodeGuardian/
 ├── api-gateway/           # API Gateway service
-│   ├── src/main/java/     # Spring Cloud Gateway
+│   ├── src/main/java/     # Spring Cloud Gateway + WebSocket
 │   ├── Dockerfile         # Container configuration
 │   └── scripts/           # Development scripts
 ├── git-processor/         # Git webhook processor
@@ -147,10 +181,16 @@ CodeGuardian/
 │   ├── src/test/java/     # Unit & integration tests
 │   └── scripts/           # Development scripts
 ├── code-analyzer/         # Security analysis engine
-│   ├── src/main/java/     # Analysis algorithms
+│   ├── src/main/java/     # Analysis algorithms + Git integration
 │   ├── src/test/java/     # Unit tests
 │   └── scripts/           # Development scripts
-├── docker-compose.yml     # Multi-service setup
+├── frontend/              # React frontend dashboard
+│   ├── src/components/    # React components
+│   ├── src/services/      # API & WebSocket services
+│   ├── Dockerfile         # Container configuration
+│   └── package.json       # Node.js dependencies
+├── docker-compose.final.yml # Complete multi-service setup
+├── RUN_INSTRUCTIONS.md   # Detailed running instructions
 ├── scripts/               # Root-level scripts
 └── README.md             # This file
 ```
@@ -158,9 +198,11 @@ CodeGuardian/
 ## 🔧 Configuration
 
 ### Service URLs
+- **Frontend Dashboard**: http://localhost:3000
 - **API Gateway**: http://localhost:8080
 - **Git Processor**: http://localhost:8081
 - **Code Analyzer**: http://localhost:8082
+- **WebSocket Endpoint**: ws://localhost:8080/ws
 
 ### Environment Variables
 ```bash
@@ -182,10 +224,12 @@ JWT_SECRET=your-256-bit-secret-key
 ## 🛡️ Security Features
 
 ### Security Analysis
-- **Vulnerability Detection**: SQL injection, XSS, hardcoded secrets
-- **Crypto Analysis**: Weak encryption, insecure random generation
-- **Authentication Issues**: JWT vulnerabilities, session management
-- **Input Validation**: Parameter tampering, injection attacks
+- **Hardcoded Secrets**: Detects hardcoded passwords, API keys, tokens (CRITICAL)
+- **SQL Injection**: Identifies unsafe SQL query construction (HIGH)
+- **XSS Vulnerabilities**: Finds Cross-Site Scripting risks (HIGH)
+- **Weak Cryptography**: Detects MD5, SHA1 usage (MEDIUM)
+- **Insecure Random**: Identifies Math.random() usage (MEDIUM)
+- **Debug Exposure**: Finds console.log, print statements (LOW)
 
 ### Code Quality
 - **Complexity Analysis**: Cyclomatic complexity, method length
@@ -237,9 +281,38 @@ curl http://localhost:8082/actuator/prometheus
 
 ## 📚 Module Documentation
 
-- **[API Gateway](./api-gateway/README.md)** - Entry point, authentication, routing
+- **[API Gateway](./api-gateway/README.md)** - Entry point, authentication, routing, WebSocket
 - **[Git Processor](./git-processor/README.md)** - Webhook processing, repository management
 - **[Code Analyzer](./code-analyzer/README.md)** - AI-powered code analysis engine
+- **[Frontend](./frontend/README.md)** - React dashboard with real-time updates
+
+## 🆕 Latest Features
+
+### Real-Time Security Analysis
+- **Live Vulnerability Detection**: Detects 6 types of security vulnerabilities in real-time
+- **Pattern-Based Analysis**: Uses regex patterns to identify hardcoded secrets, SQL injection, XSS, weak crypto, insecure random, and debug exposure
+- **CWE Classification**: Maps vulnerabilities to Common Weakness Enumeration standards
+- **Severity Scoring**: Categorizes issues as CRITICAL, HIGH, MEDIUM, or LOW
+
+### WebSocket Integration
+- **Real-Time Notifications**: Instant alerts when vulnerabilities are detected
+- **Live Dashboard Updates**: Frontend receives updates without page refresh
+- **STOMP Protocol**: Uses STOMP over WebSocket for reliable messaging
+- **Connection Management**: Automatic reconnection and error handling
+
+### Interactive Frontend
+- **React 18**: Modern React components with hooks
+- **TailwindCSS**: Responsive, modern UI design
+- **Real-Time Updates**: Live display of security analysis results
+- **WebSocket Client**: Connects to backend for real-time notifications
+- **Chart.js Integration**: Visual representation of security metrics
+
+### Enhanced Architecture
+- **Microservices**: Distributed architecture with independent services
+- **Kafka Streaming**: Event-driven architecture for scalability
+- **Docker Containerization**: Easy deployment and scaling
+- **PostgreSQL**: Robust data persistence
+- **Redis Caching**: Performance optimization
 
 ## 🤝 Contributing
 

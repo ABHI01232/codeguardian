@@ -10,89 +10,65 @@ import {
   Shield,
   Bell
 } from 'lucide-react';
+import webSocketService from '../services/websocket';
 
 const RealTimeUpdates = () => {
   const [updates, setUpdates] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  // Simulate real-time updates (replace with actual WebSocket connection)
+  // Real-time updates using WebSocket connection
   useEffect(() => {
-    // Simulate connection status
-    setIsConnected(true);
-    
-    // Add initial demo updates
-    const initialUpdates = [
-      {
-        id: 1,
-        type: 'analysis_complete',
-        title: 'Security Analysis Complete',
-        message: 'banking-api: 2 critical issues found',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000),
-        severity: 'high',
-        repository: 'banking-api'
-      },
-      {
-        id: 2,
-        type: 'webhook_received',
-        title: 'New Commit Received',
-        message: 'payment-service: commit abc123 pushed',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000),
-        severity: 'info',
-        repository: 'payment-service'
-      },
-      {
-        id: 3,
-        type: 'system_health',
-        title: 'System Health Check',
-        message: 'All services operational',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        severity: 'success',
-        repository: null
+    // Connect to WebSocket
+    webSocketService.connect();
+
+    // Subscribe to connection status
+    const unsubscribeConnection = webSocketService.subscribe('connection', (data) => {
+      setIsConnected(data.status === 'connected');
+      if (data.status === 'connected') {
+        console.log('🔌 WebSocket connected - ready to receive notifications');
       }
-    ];
-    
-    setUpdates(initialUpdates);
-    setLastUpdate(new Date());
+    });
 
-    // Simulate periodic updates
-    const interval = setInterval(() => {
-      const mockUpdates = [
-        {
-          type: 'analysis_complete',
-          title: 'Analysis Complete',
-          message: `Repository analyzed: ${Math.floor(Math.random() * 10)} issues found`,
-          severity: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low',
-          repository: `repo-${Math.floor(Math.random() * 5) + 1}`
-        },
-        {
-          type: 'webhook_received',
-          title: 'New Webhook',
-          message: `Commit ${Math.random().toString(36).substring(7)} received`,
-          severity: 'info',
-          repository: `service-${Math.floor(Math.random() * 3) + 1}`
-        },
-        {
-          type: 'security_alert',
-          title: 'Security Alert',
-          message: 'Potential vulnerability detected',
-          severity: 'high',
-          repository: 'critical-service'
-        }
-      ];
-
-      const randomUpdate = mockUpdates[Math.floor(Math.random() * mockUpdates.length)];
+    // Subscribe to notifications
+    const unsubscribeNotifications = webSocketService.subscribe('notification', (data) => {
+      console.log('📱 Received notification:', data);
+      
+      // Convert the notification data to the expected format
       const newUpdate = {
-        id: Date.now(),
-        ...randomUpdate,
-        timestamp: new Date()
+        id: data.id || Date.now(),
+        type: data.type || 'notification',
+        title: data.title || 'Notification',
+        message: data.message || 'No message',
+        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+        severity: data.severity || 'info',
+        repository: data.repository || null
       };
 
       setUpdates(prev => [newUpdate, ...prev.slice(0, 9)]); // Keep last 10 updates
       setLastUpdate(new Date());
-    }, 10000); // New update every 10 seconds
+    });
 
-    return () => clearInterval(interval);
+    // Add initial status update
+    const initialUpdate = {
+      id: Date.now(),
+      type: 'system_health',
+      title: 'WebSocket Service Started',
+      message: 'Connecting to real-time notification service...',
+      timestamp: new Date(),
+      severity: 'info',
+      repository: null
+    };
+    
+    setUpdates([initialUpdate]);
+    setLastUpdate(new Date());
+
+    // Cleanup function
+    return () => {
+      unsubscribeConnection();
+      unsubscribeNotifications();
+      webSocketService.disconnect();
+    };
   }, []);
 
   const getUpdateIcon = (type) => {

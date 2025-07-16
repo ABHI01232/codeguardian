@@ -19,7 +19,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Expose port
-EXPOSE 8081
+EXPOSE 8080
 
 # Run application
-CMD ["java", "-jar", "target/git-processor-1.0.0-SNAPSHOT.jar", "--spring.profiles.active=docker"]
+CMD ["java", "-jar", "target/api-gateway-1.0.0.jar", "--spring.profiles.active=docker"]

@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk-slim
+FROM openjdk:21-jdk-slim
 
 # Install Maven
 RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*

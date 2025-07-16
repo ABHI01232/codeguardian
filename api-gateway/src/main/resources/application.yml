@@ -5,6 +5,8 @@ spring:
   application:
     name: api-gateway
   cloud:
+    compatibility-verifier:
+      enabled: false
     gateway:
       discovery:
         locator:
@@ -32,6 +34,14 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    consumer:
+      group-id: notification-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: latest
+      enable-auto-commit: true
 
 jwt:
   secret: ${JWT_SECRET:your-256-bit-secret-key-for-jwt-token-generation-keep-it-secure-and-change-this-in-production}

@@ -1,0 +1,77 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: git-processor
+
+  # Database Configuration - Docker profile
+  datasource:
+    url: jdbc:postgresql://postgres:5432/codeguardian
+    username: ${DB_USERNAME:codeguardian}
+    password: ${DB_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 1
+    consumer:
+      group-id: git-processor-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+# Webhook Configuration
+webhook:
+  github:
+    secret: ${GITHUB_WEBHOOK_SECRET:}
+  gitlab:
+    token: ${GITLAB_WEBHOOK_TOKEN:}
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    com.codeguardian: INFO
+    org.springframework.kafka: WARN
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Custom Application Properties
+app:
+  kafka:
+    topics:
+      commit-analysis: commit-analysis
+      pull-request-analysis: pull-request-analysis
+      merge-request-analysis: merge-request-analysis
+  git:
+    clone-base-path: ${GIT_CLONE_PATH:/tmp/codeguardian/repos}
