@@ -6,20 +6,14 @@ RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 # Set working directory
 WORKDIR /app
 
-# Copy pom.xml first for dependency caching
-COPY pom.xml .
+# Copy entire project for build
+COPY . .
 
-# Download dependencies
-RUN mvn dependency:go-offline -B
-
-# Copy source code
-COPY src ./src
-
-# Build application
-RUN mvn clean package -DskipTests
+# Build only the git-processor module
+RUN mvn clean package -DskipTests -pl git-processor -am
 
 # Expose port
 EXPOSE 8081
 
 # Run application
-CMD ["java", "-jar", "target/git-processor-1.0.0-SNAPSHOT.jar", "--spring.profiles.active=docker"]
+CMD ["java", "-jar", "git-processor/target/git-processor-1.0.0-SNAPSHOT.jar", "--spring.profiles.active=docker"]

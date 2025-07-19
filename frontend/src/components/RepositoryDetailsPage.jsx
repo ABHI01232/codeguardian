@@ -33,67 +33,54 @@ const RepositoryDetailsPage = () => {
   const fetchRepositoryDetails = async () => {
     try {
       setLoading(true);
-      // For demo purposes, using mock data
-      const mockRepository = {
-        id: parseInt(id),
-        name: 'secure-banking-app',
-        fullName: 'company/secure-banking-app',
-        platform: 'GITHUB',
-        url: 'https://github.com/company/secure-banking-app',
-        description: 'Secure banking application with comprehensive security analysis',
-        language: 'Java',
-        defaultBranch: 'main',
-        isPrivate: false,
-        commitCount: 127,
-        branchCount: 3,
-        analysisCount: 45,
-        issueCount: 12,
-        lastCommitDate: new Date().toISOString(),
-        lastAnalysisDate: new Date().toISOString(),
-        securityStatus: 'WARNING',
-        webhookConfigured: true
-      };
-
-      const mockCommits = [
-        {
-          id: 'abc123',
-          message: 'Fix authentication vulnerabilities in login module',
-          author: 'Security Team',
-          date: new Date().toISOString(),
-          analysisStatus: 'COMPLETED',
-          issueCount: 3
-        },
-        {
-          id: 'def456',
-          message: 'Implement input validation for payment forms',
-          author: 'Dev Team',
-          date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          analysisStatus: 'COMPLETED',
-          issueCount: 1
+      
+      // Try to fetch real repository data
+      try {
+        const response = await repositoryAPI.getById(id);
+        const repoData = response.data;
+        
+        // Fetch commits for this repository
+        const commitsResponse = await repositoryAPI.getCommits(id);
+        const commitsData = commitsResponse.data;
+        
+        // Fetch analyses for this repository
+        const analysesResponse = await repositoryAPI.getAnalyses(id);
+        const analysesData = analysesResponse.data;
+        
+        setRepository(repoData);
+        setCommits(commitsData);
+        setAnalyses(analysesData);
+      } catch (apiError) {
+        console.error('Failed to fetch repository details:', apiError);
+        
+        // Try to get individual pieces of data
+        try {
+          const response = await repositoryAPI.getById(id);
+          setRepository(response.data);
+        } catch (repoError) {
+          console.error('Failed to fetch repository:', repoError);
+          setError('Repository not found');
+          return;
         }
-      ];
-
-      const mockAnalyses = [
-        {
-          id: 1,
-          commitId: 'abc123',
-          status: 'COMPLETED',
-          timestamp: new Date().toISOString(),
-          findings: { critical: 1, high: 2, medium: 5, low: 3 }
-        },
-        {
-          id: 2,
-          commitId: 'def456',
-          status: 'COMPLETED',
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          findings: { critical: 0, high: 1, medium: 2, low: 1 }
+        
+        try {
+          const commitsResponse = await repositoryAPI.getCommits(id);
+          setCommits(commitsResponse.data);
+        } catch (commitsError) {
+          console.error('Failed to fetch commits:', commitsError);
+          setCommits([]);
         }
-      ];
-
-      setRepository(mockRepository);
-      setCommits(mockCommits);
-      setAnalyses(mockAnalyses);
+        
+        try {
+          const analysesResponse = await repositoryAPI.getAnalyses(id);
+          setAnalyses(analysesResponse.data);
+        } catch (analysesError) {
+          console.error('Failed to fetch analyses:', analysesError);
+          setAnalyses([]);
+        }
+      }
     } catch (err) {
+      console.error('Error in fetchRepositoryDetails:', err);
       setError('Failed to load repository details');
     } finally {
       setLoading(false);
@@ -102,11 +89,52 @@ const RepositoryDetailsPage = () => {
 
   const handleAnalyzeNow = async () => {
     try {
-      // Trigger new analysis
       console.log('Triggering analysis for repository:', id);
-      // Add API call here
+      
+      // Call the actual API endpoint
+      const response = await fetch(`http://localhost:8080/api/repositories/${id}/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const analysisId = await response.text();
+        console.log('Analysis started:', analysisId);
+        
+        // Set the analysis ID and show logs
+        setCurrentAnalysisId(analysisId);
+        setShowAnalysisLogs(true);
+        
+        window.showToast && window.showToast(
+          `Analysis started for ${repository?.name}! Analysis ID: ${analysisId}`,
+          'success',
+          8000,
+          () => {
+            // When toast is clicked, navigate to analysis results when completed
+            setTimeout(() => {
+              window.open(`/analysis/${analysisId}`, '_blank');
+            }, 10000); // Wait for analysis to complete
+          }
+        );
+        
+        // Refresh repository data after a delay
+        setTimeout(() => {
+          fetchRepositoryDetails();
+        }, 12000);
+        
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Failed to start analysis: ${errorText}`);
+      }
     } catch (err) {
       console.error('Failed to trigger analysis:', err);
+      window.showToast && window.showToast(
+        `Failed to start analysis: ${err.message}`,
+        'error',
+        5000
+      );
     }
   };
 
@@ -187,11 +215,14 @@ const RepositoryDetailsPage = () => {
                 className="btn-primary flex items-center space-x-2"
               >
                 <Play className="w-4 h-4" />
-                <span>Analyze Now</span>
+                <span>{repository?.analysisCount > 0 ? 'Analyze Again' : 'Analyze Now'}</span>
               </button>
-              <button className="btn-secondary flex items-center space-x-2">
+              <button 
+                onClick={() => setShowAnalysisLogs(true)}
+                className="btn-secondary flex items-center space-x-2"
+              >
                 <Settings className="w-4 h-4" />
-                <span>Settings</span>
+                <span>View Logs</span>
               </button>
             </div>
           </div>
@@ -316,7 +347,7 @@ const RepositoryDetailsPage = () => {
                           <div className="flex items-center space-x-2 mt-1 text-sm text-gray-500">
                             <span>{commit.author}</span>
                             <span>•</span>
-                            <span>{formatDate(commit.date)}</span>
+                            <span>{formatDate(commit.timestamp || commit.date)}</span>
                             <span>•</span>
                             <span className="font-mono">{commit.id.substring(0, 8)}</span>
                           </div>
@@ -405,6 +436,14 @@ const RepositoryDetailsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Analysis Logs Modal */}
+      <AnalysisLogs
+        isOpen={showAnalysisLogs}
+        onClose={() => setShowAnalysisLogs(false)}
+        repositoryName={repository?.name || 'Unknown'}
+        analysisId={currentAnalysisId}
+      />
     </div>
   );
 };

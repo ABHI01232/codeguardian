@@ -24,41 +24,74 @@ const API_ENDPOINTS = {
 export const repositoryAPI = {
   // Get all repositories
   getAll: (page = 0, size = 10) => 
-    api.get(`${API_ENDPOINTS.gitProcessor}/api/repositories?page=${page}&size=${size}`),
+    api.get(`${API_ENDPOINTS.gateway}/api/repositories`),
   
   // Get repository by ID
   getById: (id) => 
-    api.get(`${API_ENDPOINTS.gitProcessor}/api/repositories/${id}`),
+    api.get(`${API_ENDPOINTS.gateway}/api/repositories/${id}`),
   
-  // Get repositories by platform
-  getByPlatform: (platform) => 
-    api.get(`${API_ENDPOINTS.gitProcessor}/api/repositories/platform/${platform}`),
+  // Create new repository
+  create: (repository) => 
+    api.post(`${API_ENDPOINTS.gateway}/api/repositories`, repository),
+  
+  // Update repository
+  update: (id, repository) => 
+    api.put(`${API_ENDPOINTS.gateway}/api/repositories/${id}`, repository),
+  
+  // Delete repository
+  delete: (id) => 
+    api.delete(`${API_ENDPOINTS.gateway}/api/repositories/${id}`),
+  
+  // Trigger analysis for repository
+  analyze: (id) => 
+    api.post(`${API_ENDPOINTS.gateway}/api/repositories/${id}/analyze`),
+  
+  // Get repository analyses
+  getAnalyses: (id) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/repositories/${id}/analyses`),
   
   // Get repository commits
-  getCommits: (repoId, page = 0, size = 10) => 
-    api.get(`${API_ENDPOINTS.gitProcessor}/api/repositories/${repoId}/commits?page=${page}&size=${size}`)
+  getCommits: (id) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/repositories/${id}/commits`)
 };
 
 // Analysis API
 export const analysisAPI = {
-  // Get analysis results for a commit
-  getByCommit: (commitId) => 
-    api.get(`${API_ENDPOINTS.codeAnalyzer}/api/analysis/commit/${commitId}`),
+  // Get all analyses
+  getAll: () => 
+    api.get(`${API_ENDPOINTS.gateway}/api/analyses`),
   
-  // Get latest analysis results
-  getLatest: (limit = 10) => 
-    api.get(`${API_ENDPOINTS.codeAnalyzer}/api/analysis/latest?limit=${limit}`),
+  // Get analysis by ID
+  getById: (id) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/analyses/${id}`),
   
-  // Get analysis summary/stats
-  getSummary: () => 
-    api.get(`${API_ENDPOINTS.codeAnalyzer}/api/analysis/summary`),
+  // Get recent analyses
+  getRecent: (limit = 10) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/analyses/recent?limit=${limit}`),
   
-  // Trigger manual analysis
-  trigger: (repositoryId, commitId) => 
-    api.post(`${API_ENDPOINTS.codeAnalyzer}/api/analysis/trigger`, {
-      repositoryId,
-      commitId
-    })
+  // Get analyses by repository
+  getByRepository: (repositoryId) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/analyses/repository/${repositoryId}`),
+  
+  // Get analyses by status
+  getByStatus: (status) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/analyses/status/${status}`),
+  
+  // Get analysis statistics
+  getStatistics: () => 
+    api.get(`${API_ENDPOINTS.gateway}/api/analyses/statistics`),
+  
+  // Get analysis findings
+  getFindings: (id) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/analyses/${id}/findings`),
+  
+  // Rerun analysis
+  rerun: (id) => 
+    api.post(`${API_ENDPOINTS.gateway}/api/analyses/${id}/rerun`),
+  
+  // Delete analysis
+  delete: (id) => 
+    api.delete(`${API_ENDPOINTS.gateway}/api/analyses/${id}`)
 };
 
 // Webhook API
@@ -81,46 +114,24 @@ export const webhookAPI = {
 // Dashboard API - aggregated data
 export const dashboardAPI = {
   // Get dashboard overview
-  getOverview: async () => {
-    try {
-      const [repos, health, summary] = await Promise.all([
-        repositoryAPI.getAll(0, 5),
-        webhookAPI.getHealth().catch(() => ({ data: { status: 'DOWN' } })),
-        analysisAPI.getSummary().catch(() => ({ data: {} }))
-      ]);
-      
-      return {
-        repositories: repos.data,
-        systemHealth: health.data,
-        analysisSummary: summary.data
-      };
-    } catch (error) {
-      console.error('Error fetching dashboard overview:', error);
-      throw error;
-    }
-  },
+  getOverview: () => 
+    api.get(`${API_ENDPOINTS.gateway}/api/dashboard/overview`),
   
-  // Get real-time metrics
-  getMetrics: async () => {
-    try {
-      const [latestAnalysis, recentRepos] = await Promise.all([
-        analysisAPI.getLatest(5),
-        repositoryAPI.getAll(0, 3)
-      ]);
-      
-      return {
-        latestAnalysis: latestAnalysis.data,
-        recentRepositories: recentRepos.data.content || recentRepos.data
-      };
-    } catch (error) {
-      console.error('Error fetching dashboard metrics:', error);
-      // Return mock data for demo
-      return {
-        latestAnalysis: [],
-        recentRepositories: []
-      };
-    }
-  }
+  // Get dashboard metrics
+  getMetrics: () => 
+    api.get(`${API_ENDPOINTS.gateway}/api/dashboard/metrics`),
+  
+  // Get system health
+  getHealth: () => 
+    api.get(`${API_ENDPOINTS.gateway}/api/dashboard/health`),
+  
+  // Get dashboard statistics
+  getStatistics: () => 
+    api.get(`${API_ENDPOINTS.gateway}/api/dashboard/statistics`),
+  
+  // Get recent activity
+  getRecentActivity: (limit = 20) => 
+    api.get(`${API_ENDPOINTS.gateway}/api/dashboard/recent-activity?limit=${limit}`)
 };
 
 // Request interceptor for authentication (when implemented)

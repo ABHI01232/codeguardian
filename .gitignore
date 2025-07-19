@@ -32,3 +32,18 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Docker ###
+docker-compose.*.yml
+!docker-compose.yml
+!docker-compose.override.yml
+!docker-compose.dev.yml
+Dockerfile.simple
+*.log
+
+### Application Logs ###
+api-gateway.log
+*.log
+
+### Backup Files ###
+backups/

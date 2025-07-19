@@ -63,57 +63,14 @@ const RealTimeUpdates = () => {
     setUpdates([initialUpdate]);
     setLastUpdate(new Date());
 
-    // Simulate periodic updates for demo (fallback if WebSocket fails)
-    const mockUpdates = [
-      {
-        type: 'analysis_complete',
-        title: 'Security Analysis Complete',
-        message: 'Found 3 vulnerabilities in banking-api',
-        severity: 'high',
-        repository: 'banking-api'
-      },
-      {
-        type: 'webhook_received',
-        title: 'Webhook Received',
-        message: 'New commit pushed to payment-service',
-        severity: 'info',
-        repository: 'payment-service'
-      },
-      {
-        type: 'security_alert',
-        title: 'Critical Vulnerability Detected',
-        message: 'SQL injection vulnerability in user authentication',
-        severity: 'critical',
-        repository: 'banking-api'
-      },
-      {
-        type: 'system_health',
-        title: 'System Health Check',
-        message: 'All services running normally',
-        severity: 'success',
-        repository: null
-      }
-    ];
-
-    // Simulate updates every 10 seconds for demo
-    const interval = setInterval(() => {
-      const randomUpdate = mockUpdates[Math.floor(Math.random() * mockUpdates.length)];
-      const newUpdate = {
-        id: Date.now(),
-        ...randomUpdate,
-        timestamp: new Date()
-      };
-      
-      setUpdates(prev => [newUpdate, ...prev.slice(0, 9)]);
-      setLastUpdate(new Date());
-    }, 10000);
+    // No mock updates - only show real updates from WebSocket
+    // Updates will be received when actual analysis operations occur
 
     // Cleanup function
     return () => {
       unsubscribeConnection();
       unsubscribeNotifications();
       webSocketService.disconnect();
-      clearInterval(interval);
     };
   }, []);
 
@@ -160,6 +117,25 @@ const RealTimeUpdates = () => {
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     return `${days}d ago`;
+  };
+
+  const handleViewAll = () => {
+    // For now, show all updates in an alert
+    const updatesList = updates.map(update => 
+      `${update.title} - ${update.message} (${formatTimestamp(update.timestamp)})`
+    ).join('\n');
+    
+    alert(`All Real-time Updates:\n\n${updatesList || 'No updates available'}`);
+    
+    // TODO: Navigate to dedicated updates page
+    // navigate('/updates');
+  };
+
+  const handleSettings = () => {
+    alert('Real-time Updates Settings:\n\n• Notification frequency\n• Update types to show\n• Connection settings\n• Filters and preferences\n\nSettings page coming soon!');
+    
+    // TODO: Navigate to settings page
+    // navigate('/settings');
   };
 
   return (
@@ -243,10 +219,16 @@ const RealTimeUpdates = () => {
       {/* Quick Actions */}
       <div className="border-t pt-3">
         <div className="flex space-x-2">
-          <button className="flex-1 text-xs text-gray-600 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50">
+          <button 
+            onClick={handleViewAll}
+            className="flex-1 text-xs text-gray-600 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
+          >
             View All
           </button>
-          <button className="flex-1 text-xs text-primary-600 hover:text-primary-700 px-2 py-1 rounded border border-primary-200 hover:bg-primary-50">
+          <button 
+            onClick={handleSettings}
+            className="flex-1 text-xs text-primary-600 hover:text-primary-700 px-2 py-1 rounded border border-primary-200 hover:bg-primary-50"
+          >
             Settings
           </button>
         </div>

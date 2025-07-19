@@ -10,12 +10,16 @@ import {
   FileText,
   Plus
 } from 'lucide-react';
-import { dashboardAPI } from '../services/api';
+import api, { dashboardAPI, repositoryAPI } from '../services/api';
 import AnalysisResults from './AnalysisResults';
 import RepoList from './RepoList';
 import RealTimeUpdates from './RealTimeUpdates';
 import SystemHealth from './SystemHealth';
 import AddRepositoryModal from './AddRepositoryModal';
+import ToastContainer from './ToastContainer';
+import LoadingSpinner from './LoadingSpinner';
+
+console.log('Dashboard component - repositoryAPI:', repositoryAPI);
 
 const Dashboard = () => {
   const [overview, setOverview] = useState({
@@ -31,54 +35,43 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [showAddRepoModal, setShowAddRepoModal] = useState(false);
+  const [addingRepository, setAddingRepository] = useState(false);
+  const [analyzingRepos, setAnalyzingRepos] = useState(new Set());
+  const [analysisProgress, setAnalysisProgress] = useState({});
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [overviewData, metricsData] = await Promise.all([
+      const [overviewResponse, metricsResponse] = await Promise.all([
         dashboardAPI.getOverview(),
         dashboardAPI.getMetrics()
       ]);
       
-      setOverview(overviewData);
-      setMetrics(metricsData);
+      setOverview(overviewResponse.data);
+      setMetrics(metricsResponse.data);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
       setError('Failed to load dashboard data');
-      // Set mock data for demo
+      // Set empty data instead of mock data
       setOverview({
         repositories: { 
-          content: [
-            { id: 1, name: 'banking-api', platform: 'GITHUB', commitCount: 45 },
-            { id: 2, name: 'payment-service', platform: 'GITLAB', commitCount: 32 }
-          ], 
-          totalElements: 2 
+          content: [], 
+          totalElements: 0 
         },
-        systemHealth: { status: 'UP', service: 'git-processor' },
+        systemHealth: { status: 'UNKNOWN', service: 'api-gateway' },
         analysisSummary: {
-          totalAnalyses: 127,
-          criticalIssues: 3,
-          warningIssues: 15,
-          passedChecks: 109
+          totalAnalyses: 0,
+          criticalIssues: 0,
+          warningIssues: 0,
+          passedChecks: 0
         }
       });
       setMetrics({
-        latestAnalysis: [
-          {
-            id: 1,
-            commitId: 'abc123',
-            repository: 'banking-api',
-            status: 'COMPLETED',
-            timestamp: new Date().toISOString(),
-            findings: { critical: 1, high: 2, medium: 5, low: 8 }
-          }
-        ],
-        recentRepositories: [
-          { id: 1, name: 'banking-api', platform: 'GITHUB' }
-        ]
+        latestAnalysis: [],
+        recentRepositories: []
       });
     } finally {
       setLoading(false);
@@ -87,18 +80,21 @@ const Dashboard = () => {
 
   const handleAddRepository = async (repoData) => {
     try {
-      // For now, just add to local state as demo
-      const newRepo = {
-        id: Date.now(),
-        ...repoData,
-        commitCount: 0,
-        branchCount: 1,
-        analysisCount: 0,
-        issueCount: 0,
-        lastCommitDate: new Date().toISOString(),
-        securityStatus: 'PENDING'
-      };
+      setAddingRepository(true);
+      console.log('handleAddRepository called with:', repoData);
       
+      // Show loading toast
+      window.showToast && window.showToast(
+        'Adding repository...',
+        'info',
+        3000
+      );
+      
+      // Direct API call to avoid import issues
+      const response = await api.post('http://localhost:8080/api/repositories', repoData);
+      const newRepo = response.data;
+      
+      // Update local state
       setOverview(prev => ({
         ...prev,
         repositories: {
@@ -107,11 +103,149 @@ const Dashboard = () => {
         }
       }));
       
-      // TODO: Add actual API call here
-      console.log('Adding repository:', repoData);
+      // Show success toast with analysis option
+      window.showToast && window.showToast(
+        `Repository "${newRepo.name}" added successfully! Click "Analyze Now" to start security scan.`,
+        'success',
+        8000
+      );
+      
+      console.log('Repository added successfully:', newRepo);
     } catch (error) {
       console.error('Failed to add repository:', error);
+      
+      // Show error toast
+      window.showToast && window.showToast(
+        'Failed to add repository. Please try again.',
+        'error',
+        5000
+      );
+      
       throw error;
+    } finally {
+      setAddingRepository(false);
+    }
+  };
+
+  const handleAnalyzeRepository = async (repositoryId, repositoryName) => {
+    try {
+      console.log('Starting analysis for repository:', repositoryId);
+      
+      // Add to analyzing set
+      setAnalyzingRepos(prev => new Set([...prev, repositoryId]));
+      
+      // Initialize progress
+      setAnalysisProgress(prev => ({
+        ...prev,
+        [repositoryId]: {
+          status: 'STARTING',
+          progress: 0,
+          message: 'Initializing analysis...'
+        }
+      }));
+      
+      // Show toast
+      window.showToast && window.showToast(
+        `Starting analysis for ${repositoryName}...`,
+        'info',
+        3000
+      );
+      
+      // Trigger analysis
+      const response = await api.post(`http://localhost:8080/api/repositories/${repositoryId}/analyze`);
+      const analysisId = response.data;
+      
+      // Update progress
+      setAnalysisProgress(prev => ({
+        ...prev,
+        [repositoryId]: {
+          status: 'RUNNING',
+          progress: 25,
+          message: 'Analysis in progress...',
+          analysisId: analysisId
+        }
+      }));
+      
+      // Simulate progress updates
+      setTimeout(() => {
+        setAnalysisProgress(prev => ({
+          ...prev,
+          [repositoryId]: {
+            ...prev[repositoryId],
+            progress: 50,
+            message: 'Scanning code for vulnerabilities...'
+          }
+        }));
+      }, 2000);
+      
+      setTimeout(() => {
+        setAnalysisProgress(prev => ({
+          ...prev,
+          [repositoryId]: {
+            ...prev[repositoryId],
+            progress: 75,
+            message: 'Generating security report...'
+          }
+        }));
+      }, 4000);
+      
+      setTimeout(() => {
+        setAnalysisProgress(prev => ({
+          ...prev,
+          [repositoryId]: {
+            ...prev[repositoryId],
+            status: 'COMPLETED',
+            progress: 100,
+            message: 'Analysis completed!'
+          }
+        }));
+        
+        // Remove from analyzing set after a delay
+        setTimeout(() => {
+          setAnalyzingRepos(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(repositoryId);
+            return newSet;
+          });
+        }, 3000);
+        
+        // Show completion toast with link
+        window.showToast && window.showToast(
+          `Analysis completed for ${repositoryName}! Click here to view results.`,
+          'success',
+          10000,
+          () => window.open(`/analysis/${analysisId}`, '_blank')
+        );
+        
+        // Refresh dashboard data
+        fetchDashboardData();
+      }, 6000);
+      
+    } catch (error) {
+      console.error('Failed to trigger analysis:', error);
+      
+      // Update progress with error
+      setAnalysisProgress(prev => ({
+        ...prev,
+        [repositoryId]: {
+          status: 'FAILED',
+          progress: 0,
+          message: 'Analysis failed'
+        }
+      }));
+      
+      // Remove from analyzing set
+      setAnalyzingRepos(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(repositoryId);
+        return newSet;
+      });
+      
+      window.showToast && window.showToast(
+        `Failed to start analysis for ${repositoryName}`,
+        'error',
+        5000
+      );
     }
   };
 
@@ -272,7 +406,12 @@ const Dashboard = () => {
                   {overview.repositories.totalElements} total
                 </span>
               </div>
-              <RepoList repositories={overview.repositories.content || []} />
+              <RepoList 
+                repositories={overview.repositories.content || []} 
+                onAnalyze={handleAnalyzeRepository}
+                analyzingRepos={analyzingRepos}
+                analysisProgress={analysisProgress}
+              />
             </div>
           </div>
 
@@ -299,6 +438,21 @@ const Dashboard = () => {
         onClose={() => setShowAddRepoModal(false)}
         onSubmit={handleAddRepository}
       />
+
+      {/* Toast Container */}
+      <ToastContainer />
+
+      {/* Loading Overlay */}
+      {addingRepository && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8">
+            <LoadingSpinner 
+              message="Adding repository..." 
+              type="repository"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

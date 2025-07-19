@@ -59,6 +59,28 @@ public class NotificationService {
         }
     }
 
+    @KafkaListener(topics = "analysis-progress", groupId = "notification-group")
+    public void handleAnalysisProgress(String message) {
+        logger.info("Received analysis progress: {}", message);
+        
+        try {
+            Map<String, Object> progressData = objectMapper.readValue(message, Map.class);
+            
+            // Create progress notification for WebSocket
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("type", "ANALYSIS_PROGRESS");
+            notification.put("data", progressData);
+            
+            // Send to WebSocket topic for real-time updates
+            messagingTemplate.convertAndSend("/topic/analysis-updates", notification);
+            logger.info("Sent progress update: {} ({}%)", 
+                progressData.get("step"), progressData.get("progress"));
+            
+        } catch (JsonProcessingException e) {
+            logger.error("Error processing analysis progress message", e);
+        }
+    }
+
     @KafkaListener(topics = "analysis-results", groupId = "notification-group")
     public void handleAnalysisResults(String message) {
         logger.info("Received analysis results: {}", message);
@@ -68,11 +90,12 @@ public class NotificationService {
             
             // Extract vulnerability counts
             Map<String, Object> vulnerabilities = (Map<String, Object>) resultData.get("vulnerabilities");
+            Map<String, Object> findings = (Map<String, Object>) resultData.get("findings");
             int totalIssues = 0;
             String severity = "info";
             
-            if (vulnerabilities != null) {
-                totalIssues = vulnerabilities.values().stream()
+            if (findings != null) {
+                totalIssues = findings.values().stream()
                     .mapToInt(v -> v instanceof Number ? ((Number) v).intValue() : 0)
                     .sum();
                 
@@ -88,13 +111,21 @@ public class NotificationService {
                 }
             }
             
+            // Send completion notification for WebSocket
+            Map<String, Object> completionNotification = new HashMap<>();
+            completionNotification.put("type", "ANALYSIS_COMPLETE");
+            completionNotification.put("data", resultData);
+            
+            messagingTemplate.convertAndSend("/topic/analysis-updates", completionNotification);
+            
+            // Send regular notification
             Map<String, Object> notification = createNotification(
                 "analysis_complete",
                 "Security analysis completed",
                 String.format("Analysis completed for %s - %d issues found", 
-                    resultData.getOrDefault("repository", "Unknown"), totalIssues),
+                    resultData.getOrDefault("repositoryName", "Unknown"), totalIssues),
                 severity,
-                resultData.getOrDefault("repository", "Unknown").toString()
+                resultData.getOrDefault("repositoryName", "Unknown").toString()
             );
             
             sendNotification(notification);

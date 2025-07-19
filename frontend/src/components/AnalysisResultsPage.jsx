@@ -34,94 +34,48 @@ const AnalysisResultsPage = () => {
   const fetchAnalysisDetails = async () => {
     try {
       setLoading(true);
-      // Mock analysis data
-      const mockAnalysis = {
-        id: parseInt(id),
-        commitId: 'abc123456',
-        commitMessage: 'Fix authentication vulnerabilities in login module',
-        author: 'Security Team',
-        timestamp: new Date().toISOString(),
+      
+      // Fetch real analysis data from API
+      const response = await fetch(`http://localhost:8080/api/analyses/${id}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch analysis: ${response.status}`);
+      }
+      
+      const analysisData = await response.json();
+      
+      // Transform the data to match the expected format
+      const transformedAnalysis = {
+        id: analysisData.id,
+        commitId: analysisData.commitId,
+        commitMessage: analysisData.commitMessage,
+        author: analysisData.author,
+        timestamp: analysisData.timestamp,
         repository: {
-          id: 1,
-          name: 'secure-banking-app',
-          fullName: 'company/secure-banking-app',
+          id: analysisData.repositoryId,
+          name: analysisData.repository,
+          fullName: analysisData.repository,
           platform: 'GITHUB'
         },
-        status: 'COMPLETED',
-        duration: '2m 34s',
-        scanConfig: {
+        status: analysisData.status,
+        duration: analysisData.duration,
+        scanConfig: analysisData.scanConfig || {
           language: 'Java',
-          rules: ['security', 'quality', 'performance'],
+          rules: ['security', 'quality'],
           scope: 'full'
         },
-        findings: {
-          critical: 1,
-          high: 2,
-          medium: 5,
-          low: 8
+        findings: analysisData.findings || {
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0
         },
-        details: [
-          {
-            id: 1,
-            type: 'SQL_INJECTION',
-            severity: 'CRITICAL',
-            title: 'SQL Injection vulnerability in UserService',
-            description: 'Direct concatenation of user input in SQL query without parameterization',
-            file: 'src/main/java/com/bank/service/UserService.java',
-            line: 45,
-            column: 23,
-            code: 'String query = "SELECT * FROM users WHERE username = \'" + username + "\'";',
-            recommendation: 'Use parameterized queries or prepared statements',
-            cwe: 'CWE-89',
-            owasp: 'A03:2021 - Injection'
-          },
-          {
-            id: 2,
-            type: 'HARDCODED_SECRET',
-            severity: 'HIGH',
-            title: 'Hardcoded database password',
-            description: 'Database password is hardcoded in the source code',
-            file: 'src/main/resources/application.properties',
-            line: 12,
-            column: 1,
-            code: 'spring.datasource.password=secret123',
-            recommendation: 'Use environment variables or secure configuration',
-            cwe: 'CWE-798',
-            owasp: 'A07:2021 - Identification and Authentication Failures'
-          },
-          {
-            id: 3,
-            type: 'XSS',
-            severity: 'HIGH',
-            title: 'Cross-Site Scripting (XSS) vulnerability',
-            description: 'User input is directly rendered without sanitization',
-            file: 'src/main/java/com/bank/controller/UserController.java',
-            line: 78,
-            column: 15,
-            code: 'model.addAttribute("userInput", request.getParameter("input"));',
-            recommendation: 'Sanitize user input before rendering',
-            cwe: 'CWE-79',
-            owasp: 'A03:2021 - Injection'
-          },
-          {
-            id: 4,
-            type: 'WEAK_CRYPTO',
-            severity: 'MEDIUM',
-            title: 'Weak cryptographic algorithm',
-            description: 'Using deprecated MD5 hash algorithm',
-            file: 'src/main/java/com/bank/util/CryptoUtil.java',
-            line: 32,
-            column: 28,
-            code: 'MessageDigest md = MessageDigest.getInstance("MD5");',
-            recommendation: 'Use SHA-256 or stronger algorithms',
-            cwe: 'CWE-327',
-            owasp: 'A02:2021 - Cryptographic Failures'
-          }
-        ]
+        details: analysisData.details || []
       };
 
-      setAnalysis(mockAnalysis);
+      setAnalysis(transformedAnalysis);
     } catch (err) {
+      console.error('Error fetching analysis details:', err);
       setError('Failed to load analysis details');
     } finally {
       setLoading(false);

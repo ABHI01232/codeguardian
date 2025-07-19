@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Github, Gitlab, Plus, Check } from 'lucide-react';
+import { X, Github, Gitlab, Plus, Check, Loader2 } from 'lucide-react';
 
 const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -7,7 +7,7 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
     platform: 'GITHUB',
     name: '',
     description: '',
-    defaultBranch: 'main',
+    defaultBranch: 'master',
     isPrivate: false
   });
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
         platform: 'GITHUB',
         name: '',
         description: '',
-        defaultBranch: 'main',
+        defaultBranch: 'master',
         isPrivate: false
       });
       onClose();
@@ -65,21 +65,23 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
 
   const handleUrlChange = (e) => {
     const url = e.target.value;
-    setFormData(prev => ({ ...prev, url }));
+    
+    // Update the URL first
+    setFormData(prevData => ({ ...prevData, url }));
 
     // Auto-detect platform from URL
     if (url.includes('github.com')) {
-      setFormData(prev => ({ ...prev, platform: 'GITHUB' }));
+      setFormData(prevData => ({ ...prevData, platform: 'GITHUB' }));
     } else if (url.includes('gitlab.com')) {
-      setFormData(prev => ({ ...prev, platform: 'GITLAB' }));
+      setFormData(prevData => ({ ...prevData, platform: 'GITLAB' }));
     }
 
     // Auto-extract repository name
     if (url.includes('/')) {
       const urlParts = url.split('/');
       const repoName = urlParts[urlParts.length - 1].replace('.git', '');
-      if (repoName && !prev.name) {
-        setFormData(prev => ({ ...prev, name: repoName }));
+      if (repoName && !formData.name) {
+        setFormData(prevData => ({ ...prevData, name: repoName }));
       }
     }
   };
@@ -134,7 +136,7 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
                 <button
                   key={platform.value}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, platform: platform.value }))}
+                  onClick={() => setFormData(prevData => ({ ...prevData, platform: platform.value }))}
                   className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-md border transition-colors ${
                     formData.platform === platform.value
                       ? 'border-primary-500 bg-primary-50 text-primary-700'
@@ -192,7 +194,7 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
               value={formData.defaultBranch}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="main"
+              placeholder="master"
             />
           </div>
 
@@ -226,7 +228,7 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Adding...</span>
                 </>
               ) : (

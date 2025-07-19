@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   GitBranch, 
@@ -9,9 +9,48 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import { repositoryAPI } from '../services/api';
+import AnalysisModal from './AnalysisModal';
 
-const RepoList = ({ repositories = [] }) => {
+const RepoList = ({ repositories = [], onAnalyze, analyzingRepos = new Set(), analysisProgress = {} }) => {
   const navigate = useNavigate();
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [currentAnalysis, setCurrentAnalysis] = useState(null);
+  
+  const handleAnalyzeNow = async (repo) => {
+    if (onAnalyze) {
+      await onAnalyze(repo.id, repo.name);
+    } else {
+      try {
+        // Fallback to original implementation
+        console.log('Starting analysis for repository:', repo.name);
+        
+        const response = await repositoryAPI.analyze(repo.id);
+        const result = response.data;
+        
+        setCurrentAnalysis({
+          repository: repo.name,
+          analysisId: result.analysisId,
+          repositoryId: repo.id
+        });
+        setShowAnalysisModal(true);
+        
+        window.showToast && window.showToast(
+          `Analysis started for ${repo.name}`,
+          'success',
+          3000
+        );
+        
+      } catch (error) {
+        console.error('Failed to start analysis:', error);
+        window.showToast && window.showToast(
+          'Failed to start analysis. Please try again.',
+          'error',
+          5000
+        );
+      }
+    }
+  };
   
   const getPlatformColor = (platform) => {
     switch (platform?.toLowerCase()) {
@@ -189,6 +228,36 @@ const RepoList = ({ repositories = [] }) => {
               </div>
             )}
 
+            {/* Analysis Progress */}
+            {analyzingRepos.has(repo.id) && analysisProgress[repo.id] && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Analysis Progress</span>
+                  <span className="text-xs text-gray-500">
+                    {analysisProgress[repo.id].progress}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-primary-600 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${analysisProgress[repo.id].progress}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {analysisProgress[repo.id].message}
+                </p>
+                {analysisProgress[repo.id].status === 'COMPLETED' && (
+                  <button 
+                    onClick={() => navigate(`/analysis/${analysisProgress[repo.id].analysisId}`)}
+                    className="text-xs text-green-600 hover:text-green-700 mt-2 flex items-center space-x-1"
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    <span>View Analysis Results</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Quick Actions */}
             <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
               <div className="flex items-center space-x-2 text-xs text-gray-500">
@@ -201,9 +270,18 @@ const RepoList = ({ repositories = [] }) => {
                 )}
               </div>
               <div className="flex space-x-2">
-                <button className="text-xs text-primary-600 hover:text-primary-700 px-2 py-1 rounded border border-primary-200 hover:bg-primary-50">
-                  Analyze Now
-                </button>
+                {!analyzingRepos.has(repo.id) ? (
+                  <button 
+                    onClick={() => handleAnalyzeNow(repo)}
+                    className="text-xs text-primary-600 hover:text-primary-700 px-2 py-1 rounded border border-primary-200 hover:bg-primary-50"
+                  >
+                    {repo.analysisCount > 0 ? 'Analyze Again' : 'Analyze Now'}
+                  </button>
+                ) : (
+                  <span className="text-xs text-gray-500 px-2 py-1">
+                    Analyzing...
+                  </span>
+                )}
                 <button 
                   onClick={() => navigate(`/repository/${repo.id}`)}
                   className="text-xs text-gray-600 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
@@ -215,6 +293,14 @@ const RepoList = ({ repositories = [] }) => {
           </div>
         );
       })}
+
+      {/* Analysis Modal */}
+      <AnalysisModal 
+        isOpen={showAnalysisModal}
+        onClose={() => setShowAnalysisModal(false)}
+        repository={currentAnalysis?.repository}
+        analysisId={currentAnalysis?.analysisId}
+      />
     </div>
   );
 };

@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: codeguardian
       POSTGRES_USER: codeguardian
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: codeguardian123
     ports:
       - "5432:5432"
     volumes:
@@ -52,7 +52,9 @@ services:
 
   # API Gateway
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
     container_name: codeguardian-api-gateway
     depends_on:
       - redis
@@ -66,7 +68,9 @@ services:
 
   # Git Processor
   git-processor:
-    build: ./git-processor
+    build:
+      context: .
+      dockerfile: git-processor/Dockerfile
     container_name: codeguardian-git-processor
     depends_on:
       - postgres
@@ -76,7 +80,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DB_USERNAME: codeguardian
-      DB_PASSWORD: password
+      DB_PASSWORD: codeguardian123
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       GITHUB_WEBHOOK_SECRET: your-github-webhook-secret
       GITLAB_WEBHOOK_TOKEN: your-gitlab-webhook-token
@@ -87,7 +91,9 @@ services:
 
   # Code Analyzer
   code-analyzer:
-    build: ./code-analyzer
+    build:
+      context: .
+      dockerfile: code-analyzer/Dockerfile
     container_name: codeguardian-code-analyzer
     depends_on:
       - postgres
@@ -97,7 +103,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DB_USERNAME: codeguardian
-      DB_PASSWORD: password
+      DB_PASSWORD: codeguardian123
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     networks:
       - codeguardian-network
