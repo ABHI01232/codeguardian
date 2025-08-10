@@ -1,8 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://postgres:5432/codeguardian
-    username: ${DB_USERNAME:codeguardian}
-    password: ${DB_PASSWORD:password}
-    
-  kafka:
-    bootstrap-servers: kafka:9092

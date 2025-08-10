@@ -44,7 +44,7 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
         platform: 'GITHUB',
         name: '',
         description: '',
-        defaultBranch: 'master',
+        defaultBranch: 'main',
         isPrivate: false
       });
       onClose();
@@ -63,25 +63,38 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
     }));
   };
 
-  const handleUrlChange = (e) => {
+  const handleUrlChange = async (e) => {
     const url = e.target.value;
     
     // Update the URL first
     setFormData(prevData => ({ ...prevData, url }));
 
-    // Auto-detect platform from URL
-    if (url.includes('github.com')) {
-      setFormData(prevData => ({ ...prevData, platform: 'GITHUB' }));
-    } else if (url.includes('gitlab.com')) {
-      setFormData(prevData => ({ ...prevData, platform: 'GITLAB' }));
+    if (!url.trim()) {
+      return;
     }
 
-    // Auto-extract repository name
+    // Auto-detect platform from URL
+    let platform = 'GITHUB';
+    if (url.includes('github.com')) {
+      platform = 'GITHUB';
+    } else if (url.includes('gitlab.com')) {
+      platform = 'GITLAB';
+    }
+
+    // Auto-extract repository name and owner
     if (url.includes('/')) {
-      const urlParts = url.split('/');
-      const repoName = urlParts[urlParts.length - 1].replace('.git', '');
-      if (repoName && !formData.name) {
-        setFormData(prevData => ({ ...prevData, name: repoName }));
+      const urlParts = url.replace('.git', '').split('/');
+      if (urlParts.length >= 2) {
+        const repoName = urlParts[urlParts.length - 1];
+        const owner = urlParts[urlParts.length - 2];
+        
+        // Update all fields at once
+        setFormData(prevData => ({ 
+          ...prevData, 
+          platform,
+          name: repoName,
+          defaultBranch: 'main' // Default, will be detected async on backend
+        }));
       }
     }
   };
@@ -194,7 +207,7 @@ const AddRepositoryModal = ({ isOpen, onClose, onSubmit }) => {
               value={formData.defaultBranch}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="master"
+              placeholder="main"
             />
           </div>
 

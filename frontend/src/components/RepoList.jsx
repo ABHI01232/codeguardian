@@ -72,10 +72,11 @@ const RepoList = ({ repositories = [], onAnalyze, analyzingRepos = new Set(), an
   };
 
   const getHealthStatus = (repo) => {
-    // Mock health status based on recent activity
+    // Health status based on actual commit activity
     const lastCommit = repo.lastCommitDate ? new Date(repo.lastCommitDate) : null;
-    const daysSinceLastCommit = lastCommit ? 
-      Math.floor((Date.now() - lastCommit.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+    if (!lastCommit) return 'unknown';
+    
+    const daysSinceLastCommit = Math.floor((Date.now() - lastCommit.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysSinceLastCommit <= 7) return 'healthy';
     if (daysSinceLastCommit <= 30) return 'warning';
@@ -283,7 +284,10 @@ const RepoList = ({ repositories = [], onAnalyze, analyzingRepos = new Set(), an
                   </span>
                 )}
                 <button 
-                  onClick={() => navigate(`/repository/${repo.id}`)}
+                  onClick={() => {
+                    console.log('🔗 Navigating to repository details for ID:', repo.id);
+                    navigate(`/repository/${repo.id}`);
+                  }}
                   className="text-xs text-gray-600 hover:text-gray-700 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
                 >
                   View Details

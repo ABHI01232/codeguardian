@@ -58,17 +58,25 @@ CodeGuardian is a comprehensive, microservices-based security analysis platform 
 - Java 21+
 - Maven 3.8+
 - Docker & Docker Compose
-- Node.js 18+ (for frontend development)
-- Git
 
-### Option 1: Docker Compose (Recommended - Complete Setup)
+### Option 1: Backend Only (Simplified - API Testing)
 ```bash
-# Clone repository
-git clone <repository-url>
-cd CodeGuardian
+# Start the backend API with Swagger documentation
+./start-backend.sh
 
+# Access Swagger UI for API testing
+open http://localhost:8080/swagger-ui.html
+
+# Test APIs using the interactive documentation
+# - Add repositories
+# - Trigger security analysis  
+# - View results
+```
+
+### Option 2: Full Stack (Backend + Frontend)
+```bash
 # Start all services (includes PostgreSQL, Kafka, Redis, Frontend)
-docker-compose -f docker-compose.final.yml up -d
+docker-compose -f docker-compose.yml up -d
 
 # Verify services
 curl http://localhost:8080/actuator/health  # API Gateway
@@ -77,27 +85,19 @@ curl http://localhost:8082/actuator/health  # Code Analyzer
 
 # Access the dashboard
 open http://localhost:3000  # React Frontend Dashboard
-
-# Test real-time analysis
-curl -X POST http://localhost:8080/api/git/webhook/github \
-  -H "Content-Type: application/json" \
-  -H "X-GitHub-Event: push" \
-  -d '{"repository": {"name": "test-repo"}, "commits": [{"id": "abc123", "message": "Test commit"}]}'
 ```
 
-### Option 2: Local Development (Manual Setup)
+### Option 3: Local Development
 ```bash
-# 1. Install PostgreSQL (optional if using Docker)
-brew install postgresql  # macOS
-sudo apt-get install postgresql  # Ubuntu
-
-# 2. Start infrastructure services
+# 1. Start infrastructure services
 docker-compose up -d postgres redis kafka zookeeper
 
-# 3. Start each service in separate terminals
-cd api-gateway && ./scripts/start-dev.sh
-cd git-processor && ./scripts/start-dev.sh
-cd code-analyzer && ./scripts/start-dev.sh
+# 2. Start API Gateway (main service)
+cd api-gateway && mvn spring-boot:run
+
+# 3. Optional: Start other microservices in separate terminals
+cd git-processor && mvn spring-boot:run
+cd code-analyzer && mvn spring-boot:run
 ```
 
 ## 🔄 System Flow
@@ -198,8 +198,9 @@ CodeGuardian/
 ## 🔧 Configuration
 
 ### Service URLs
-- **Frontend Dashboard**: http://localhost:3000
+- **Swagger API Documentation**: http://localhost:8080/swagger-ui.html
 - **API Gateway**: http://localhost:8080
+- **Frontend Dashboard**: http://localhost:3000
 - **Git Processor**: http://localhost:8081
 - **Code Analyzer**: http://localhost:8082
 - **WebSocket Endpoint**: ws://localhost:8080/ws

@@ -45,5 +45,16 @@ Dockerfile.simple
 api-gateway.log
 *.log
 
+### Database Files ###
+data/
+*.db
+*.mv.db
+*.trace.db
+
+### Test/Debug Files ###
+**/test.html
+**/debug.html
+frontend/dist/
+
 ### Backup Files ###
 backups/

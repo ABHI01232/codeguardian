@@ -15,6 +15,7 @@ import {
   Shield
 } from 'lucide-react';
 import { repositoryAPI } from '../services/api';
+import AnalysisLogs from './AnalysisLogs';
 
 const RepositoryDetailsPage = () => {
   const { id } = useParams();
@@ -25,40 +26,62 @@ const RepositoryDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showAnalysisLogs, setShowAnalysisLogs] = useState(false);
+  const [currentAnalysisId, setCurrentAnalysisId] = useState(null);
 
   useEffect(() => {
-    fetchRepositoryDetails();
+    console.log('🚀 RepositoryDetailsPage mounted with ID:', id);
+    console.log('🔍 Current window location:', window.location.href);
+    console.log('🔍 useParams result:', { id });
+    
+    if (id) {
+      fetchRepositoryDetails();
+    } else {
+      console.error('❌ No repository ID provided');
+      setError('No repository ID provided');
+      setLoading(false);
+    }
   }, [id]);
 
   const fetchRepositoryDetails = async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('🔍 Fetching repository details for ID:', id);
       
       // Try to fetch real repository data
       try {
+        console.log('📡 Calling repositoryAPI.getById for ID:', id);
         const response = await repositoryAPI.getById(id);
         const repoData = response.data;
+        console.log('📊 Repository data received:', repoData);
         
         // Fetch commits for this repository
+        console.log('📡 Fetching commits for repository:', id);
         const commitsResponse = await repositoryAPI.getCommits(id);
         const commitsData = commitsResponse.data;
+        console.log('📊 Commits data received:', commitsData);
         
         // Fetch analyses for this repository
+        console.log('📡 Fetching analyses for repository:', id);
         const analysesResponse = await repositoryAPI.getAnalyses(id);
         const analysesData = analysesResponse.data;
+        console.log('📊 Analyses data received:', analysesData);
         
         setRepository(repoData);
         setCommits(commitsData);
         setAnalyses(analysesData);
       } catch (apiError) {
-        console.error('Failed to fetch repository details:', apiError);
+        console.error('❌ Failed to fetch repository details:', apiError);
         
         // Try to get individual pieces of data
         try {
+          console.log('🔄 Fallback: trying to fetch repository individually');
           const response = await repositoryAPI.getById(id);
+          console.log('📊 Fallback repository data:', response.data);
           setRepository(response.data);
         } catch (repoError) {
-          console.error('Failed to fetch repository:', repoError);
+          console.error('❌ Failed to fetch repository:', repoError);
           setError('Repository not found');
           return;
         }
@@ -67,7 +90,7 @@ const RepositoryDetailsPage = () => {
           const commitsResponse = await repositoryAPI.getCommits(id);
           setCommits(commitsResponse.data);
         } catch (commitsError) {
-          console.error('Failed to fetch commits:', commitsError);
+          console.error('❌ Failed to fetch commits:', commitsError);
           setCommits([]);
         }
         
@@ -75,15 +98,16 @@ const RepositoryDetailsPage = () => {
           const analysesResponse = await repositoryAPI.getAnalyses(id);
           setAnalyses(analysesResponse.data);
         } catch (analysesError) {
-          console.error('Failed to fetch analyses:', analysesError);
+          console.error('❌ Failed to fetch analyses:', analysesError);
           setAnalyses([]);
         }
       }
     } catch (err) {
-      console.error('Error in fetchRepositoryDetails:', err);
+      console.error('❌ Error in fetchRepositoryDetails:', err);
       setError('Failed to load repository details');
     } finally {
       setLoading(false);
+      console.log('✅ fetchRepositoryDetails completed');
     }
   };
 
@@ -139,7 +163,13 @@ const RepositoryDetailsPage = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    if (!dateString) return 'Not available';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (error) {
+      console.error('Date formatting error:', error, 'for date:', dateString);
+      return 'Invalid date';
+    }
   };
 
   const getStatusColor = (status) => {
@@ -165,6 +195,7 @@ const RepositoryDetailsPage = () => {
         <div className="text-center">
           <Shield className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading repository details...</p>
+          <p className="text-gray-400 text-sm mt-2">Repository ID: {id}</p>
         </div>
       </div>
     );
@@ -176,9 +207,28 @@ const RepositoryDetailsPage = () => {
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 text-lg mb-2">{error}</p>
+          <p className="text-gray-400 text-sm mb-4">Repository ID: {id}</p>
           <button 
             onClick={() => navigate('/')}
-            className="btn-primary"
+            className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!repository) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+          <p className="text-yellow-600 text-lg mb-2">Repository not found</p>
+          <p className="text-gray-400 text-sm mb-4">Repository ID: {id}</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
           >
             Back to Dashboard
           </button>

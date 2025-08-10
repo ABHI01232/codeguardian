@@ -49,18 +49,8 @@ const RealTimeUpdates = () => {
       setLastUpdate(new Date());
     });
 
-    // Add initial status update
-    const initialUpdate = {
-      id: Date.now(),
-      type: 'system_health',
-      title: 'Real-time Updates Active',
-      message: 'Monitoring system for security events...',
-      timestamp: new Date(),
-      severity: 'info',
-      repository: null
-    };
-    
-    setUpdates([initialUpdate]);
+    // Start with empty updates - only show real data
+    setUpdates([]);
     setLastUpdate(new Date());
 
     // No mock updates - only show real updates from WebSocket

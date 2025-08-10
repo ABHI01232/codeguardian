@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 
 const AnalysisResultsPage = () => {
+  console.log('🚀 AnalysisResultsPage component mounted');
+  
   const { id } = useParams();
   const navigate = useNavigate();
   const [analysis, setAnalysis] = useState(null);
@@ -26,6 +28,8 @@ const AnalysisResultsPage = () => {
   const [error, setError] = useState(null);
   const [filterSeverity, setFilterSeverity] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  console.log('🔍 AnalysisResultsPage initialized with ID:', id);
 
   useEffect(() => {
     fetchAnalysisDetails();
@@ -34,52 +38,99 @@ const AnalysisResultsPage = () => {
   const fetchAnalysisDetails = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Fetching analysis details for ID:', id);
       
-      // Fetch real analysis data from API
-      const response = await fetch(`http://localhost:8080/api/analyses/${id}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch analysis: ${response.status}`);
+      // Try individual analysis endpoint first
+      try {
+        const response = await fetch(`http://localhost:8080/api/analyses/${id}`);
+        console.log('📡 Individual analysis response status:', response.status);
+        
+        if (response.ok) {
+          const analysisData = await response.json();
+          console.log('📊 Individual analysis data:', analysisData);
+          
+          // Check if we have meaningful data
+          const hasDetails = analysisData.details && analysisData.details.length > 0;
+          const hasFindings = analysisData.findings && Object.values(analysisData.findings).some(count => count > 0);
+          const isCompleted = analysisData.status === 'COMPLETED';
+          
+          console.log('🔍 Data quality check:', {
+            hasDetails,
+            hasFindings,
+            isCompleted,
+            status: analysisData.status,
+            findingsCount: analysisData.details?.length || 0,
+            totalFindings: hasFindings ? Object.values(analysisData.findings).reduce((a, b) => a + b, 0) : 0
+          });
+          
+          // Only use individual data if it's meaningful (has details/findings AND is completed)
+          if ((hasDetails || hasFindings) && isCompleted) {
+            console.log('✅ Using individual analysis data - has meaningful data and is completed');
+            setAnalysis(transformAnalysisData(analysisData, id));
+            return;
+          } else {
+            console.log('⚠️ Individual analysis insufficient - trying list endpoint', {
+              reason: !isCompleted ? 'not completed' : 'no meaningful data'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('❌ Individual analysis fetch failed:', error);
       }
       
-      const analysisData = await response.json();
+      // Fallback: Try to find the analysis in the list endpoint
+      console.log('📡 Trying to fetch from analyses list');
+      const listResponse = await fetch('http://localhost:8080/api/analyses');
+      if (listResponse.ok) {
+        const analysesList = await listResponse.json();
+        console.log('📊 Got analyses list, length:', analysesList.length);
+        
+        const foundAnalysis = analysesList.find(analysis => analysis.id === id);
+        if (foundAnalysis) {
+          console.log('✅ Found analysis in list:', foundAnalysis);
+          setAnalysis(transformAnalysisData(foundAnalysis, id));
+          return;
+        }
+      }
       
-      // Transform the data to match the expected format
-      const transformedAnalysis = {
-        id: analysisData.id,
-        commitId: analysisData.commitId,
-        commitMessage: analysisData.commitMessage,
-        author: analysisData.author,
-        timestamp: analysisData.timestamp,
-        repository: {
-          id: analysisData.repositoryId,
-          name: analysisData.repository,
-          fullName: analysisData.repository,
-          platform: 'GITHUB'
-        },
-        status: analysisData.status,
-        duration: analysisData.duration,
-        scanConfig: analysisData.scanConfig || {
-          language: 'Java',
-          rules: ['security', 'quality'],
-          scope: 'full'
-        },
-        findings: analysisData.findings || {
-          critical: 0,
-          high: 0,
-          medium: 0,
-          low: 0
-        },
-        details: analysisData.details || []
-      };
-
-      setAnalysis(transformedAnalysis);
+      throw new Error('Analysis not found in individual or list endpoints');
+      
     } catch (err) {
-      console.error('Error fetching analysis details:', err);
-      setError('Failed to load analysis details');
+      console.error('❌ Error fetching analysis details:', err);
+      setError('Failed to load analysis details: ' + err.message);
     } finally {
       setLoading(false);
     }
+  };
+  
+  const transformAnalysisData = (analysisData, id) => {
+    return {
+      id: analysisData.id || id,
+      commitId: analysisData.commitId || 'unknown',
+      commitMessage: analysisData.commitMessage || 'No commit message',
+      author: analysisData.author || 'Unknown',
+      timestamp: analysisData.timestamp || new Date().toISOString(),
+      repository: {
+        id: analysisData.repositoryId,
+        name: analysisData.repository || 'Unknown Repository',
+        fullName: analysisData.repository || 'Unknown Repository',
+        platform: 'GITHUB'
+      },
+      status: analysisData.status || 'UNKNOWN',
+      duration: analysisData.duration || 'N/A',
+      scanConfig: analysisData.scanConfig || {
+        language: 'Java',
+        rules: ['security', 'quality'],
+        scope: 'full'
+      },
+      findings: analysisData.findings || {
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0
+      },
+      details: analysisData.details || []
+    };
   };
 
   const getSeverityColor = (severity) => {
@@ -158,8 +209,46 @@ const AnalysisResultsPage = () => {
     );
   }
 
+  // Debug function to show current state
+  const debugCurrentState = () => {
+    console.log('🐛 DEBUG - Current Analysis State:', {
+      analysis,
+      loading,
+      error,
+      id,
+      totalIssues: getTotalIssues(),
+      filteredFindingsLength: filteredFindings.length
+    });
+    alert(`Debug Info:
+Analysis ID: ${id}
+Loading: ${loading}
+Error: ${error || 'none'}
+Analysis Object: ${analysis ? 'exists' : 'null'}
+Total Issues: ${getTotalIssues()}
+Filtered Findings: ${filteredFindings.length}
+Status: ${analysis?.status || 'unknown'}
+Check console for full details`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* DEBUG BUTTON - Remove after fixing */}
+      <div style={{position: 'fixed', top: '10px', right: '10px', zIndex: 9999}}>
+        <button 
+          onClick={debugCurrentState}
+          style={{
+            background: 'red', 
+            color: 'white', 
+            padding: '10px', 
+            border: 'none', 
+            borderRadius: '4px',
+            fontSize: '12px',
+            cursor: 'pointer'
+          }}
+        >
+          🐛 DEBUG
+        </button>
+      </div>
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -296,6 +296,13 @@ const Dashboard = () => {
               </div>
               <div className="flex space-x-2">
                 <button 
+                  onClick={() => window.location.href = '/risk-dashboard'}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md flex items-center space-x-2"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Risk Dashboard</span>
+                </button>
+                <button 
                   onClick={() => setShowAddRepoModal(true)}
                   className="btn-primary flex items-center space-x-2"
                 >
